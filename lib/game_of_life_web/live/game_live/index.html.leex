@@ -17,8 +17,8 @@
       </div>
 
       <div class="buttons">
-        <%= link "Play", to: "#", class: "button is-primary", phx_click: "play" %>
-        <%= link "Stop", to: "#",  class: "button is-danger",  phx_click: "stop" %>
+        <%= link "Play", to: "#", class: "button is-primary", phx_click: "play", disabled: @playing %>
+        <%= link "Stop", to: "#",  class: "button is-danger",  phx_click: "stop", disabled: not @playing %>
       </div>
     </div>
   </div>

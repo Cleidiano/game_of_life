@@ -39,11 +39,11 @@ defmodule GameOfLifeWeb.GameLive.Index do
   @impl true
   def handle_event("play", _, socket) do
     Process.send(self(), :play, [])
-    {:noreply, assign(socket, :playing, true)}
+    {:noreply, play(socket)}
   end
 
   def handle_event("stop", _, socket) do
-    {:noreply, assign(socket, :playing, false)}
+    {:noreply, stop(socket)}
   end
 
   def handle_event("change_board", %{"value" => size}, socket) do
@@ -71,11 +71,10 @@ defmodule GameOfLifeWeb.GameLive.Index do
 
   @impl true
   def handle_info(:play, socket) do
-    # Se todas as celulas estiverem mortas, stop.
     game = socket.assigns.game
 
     if not socket.assigns.playing or Game.all_dead?(game) do
-      {:noreply, socket}
+      {:noreply, stop(socket)}
     else
       Process.send_after(self(), :play, socket.assigns.sleep)
       {:noreply, assign(socket, :game, Game.play(game))}
@@ -84,4 +83,12 @@ defmodule GameOfLifeWeb.GameLive.Index do
 
   defp flip_state(game, x, y, "live"), do: Game.dead(game, {x, y})
   defp flip_state(game, x, y, "dead"), do: Game.live(game, {x, y})
+
+  defp play(socket) do
+    assign(socket, playing: true)
+  end
+
+  defp stop(socket) do
+    assign(socket, playing: false)
+  end
 end
