@@ -38,13 +38,12 @@ defmodule GameOfLifeWeb.GameLive.Index do
 
   @impl true
   def handle_event("play", _, socket) do
-    Process.send(self(), :play, [])
-    {:noreply, play(socket)}
+    start_game(socket)
   end
 
-  def handle_event("stop", _, socket) do
-    {:noreply, stop(socket)}
-  end
+  def handle_event("pause", _, socket), do: pause(socket)
+
+  def handle_event("stop", _, socket), do: stop(socket)
 
   def handle_event("change_board", %{"value" => size}, socket) do
     {size, ""} = Integer.parse(size)
@@ -71,24 +70,41 @@ defmodule GameOfLifeWeb.GameLive.Index do
 
   @impl true
   def handle_info(:play, socket) do
+    play(socket)
+  end
+
+  defp start_game(socket) do
+    socket
+    |> assign(:playing, true)
+    |> play()
+  end
+
+  defp play(socket) do
     game = socket.assigns.game
 
     if not socket.assigns.playing or Game.all_dead?(game) do
-      {:noreply, stop(socket)}
+      pause(socket)
     else
       Process.send_after(self(), :play, socket.assigns.sleep)
       {:noreply, assign(socket, :game, Game.play(game))}
     end
   end
 
-  defp flip_state(game, x, y, "live"), do: Game.dead(game, {x, y})
-  defp flip_state(game, x, y, "dead"), do: Game.live(game, {x, y})
-
-  defp play(socket) do
-    assign(socket, playing: true)
+  defp pause(socket) do
+    {:noreply, assign(socket, playing: false)}
   end
 
   defp stop(socket) do
-    assign(socket, playing: false)
+    {:noreply,
+     socket
+     |> assign(playing: false)
+     |> assign(:game, Game.new(socket.assigns.board_size))}
+  end
+
+  defp flip_state(game, x, y, "live"), do: Game.dead(game, {x, y})
+  defp flip_state(game, x, y, "dead"), do: Game.live(game, {x, y})
+
+  defp conditional_event(state, event) do
+    if state, do: event
   end
 end

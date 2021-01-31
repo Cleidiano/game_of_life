@@ -6,19 +6,20 @@
         <div class="control">
           <%= label :speed_label, :speed, class: "label" %>
           <span>Speed <%= @speed  %></span>
-          <%= range_input :speed, :speed, min: "200", max: "1000", "phx-click": "speed", value: @speed %>
+          <%= range_input :speed, :speed, min: "200", max: "1000", phx_click: "speed", value: @speed %>
         </div>
 
         <div class="control">
           <%= label :board_size_label, :board_size, class: "label" %>
           <span>Size <%= @board_size %></span>
-          <%= range_input :board_size, :board_size, min: "0", max: "60",  "phx-click": "change_board", value: @board_size %>
+          <%= range_input :board_size, :board_size, min: "0", max: "60",  phx_click: "change_board", value: @board_size %>
         </div>
       </div>
 
       <div class="buttons">
-        <%= link "Play", to: "#", class: "button is-primary", phx_click: "play", disabled: @playing %>
-        <%= link "Stop", to: "#",  class: "button is-danger",  phx_click: "stop", disabled: not @playing %>
+        <%= link "Play", to: "#", class: "button is-primary", phx_click: conditional_event(!@playing, "play"), disabled: @playing %>
+        <%= link "Pause", to: "#", class: "button is-info", phx_click: conditional_event(@playing, "pause"), disabled: not @playing %>
+        <%= link "Stop", to: "#",  class: "button is-danger",  phx_click: conditional_event(@playing, "pause"), disabled: not @playing %>
       </div>
     </div>
   </div>
