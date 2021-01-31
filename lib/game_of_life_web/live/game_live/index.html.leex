@@ -1,20 +1,46 @@
-<h1>Game</h1>
-<table class="table is-bordered is-fullwidth">
-  <tbody id="board">
-    <%= for {x_index, row} <- @game.cells |> Map.to_list() |> Enum.sort() do %>
-    <tr id="<%= x_index %>">
-      <%= for {y_index, value} <- row |> Map.to_list() |> Enum.sort() do %>
-      <td id="<%= y_index %>"
-          class="cell-<%= value %>"
-          phx-click="flip_state"
-          phx-value-x_axis="<%= x_index %>"
-          phx-value-y_axis="<%= y_index %>"
-          phx-value-cell_value="<%= value %>">
+<section class="section">
+  <h1 class="title pl-6">Game of Life</h1>
+  <div class="columns pl-6">
+    <div class="column pl-3">
+      <div class="field is-grouped">
+        <div class="control">
+          <%= label :speed_label, :speed, class: "label" %>
+          <span>Speed <%= @speed  %></span>
+          <%= range_input :speed, :speed, min: "200", max: "1000", "phx-click": "speed", value: @speed %>
+        </div>
+
+        <div class="control">
+          <%= label :board_size_label, :board_size, class: "label" %>
+          <span>Size <%= @board_size %></span>
+          <%= range_input :board_size, :board_size, min: "0", max: "60",  "phx-click": "change_board", value: @board_size %>
+        </div>
+      </div>
+
+      <div class="buttons">
+        <%= link "Play", to: "#", class: "button is-primary", phx_click: "play" %>
+        <%= link "Stop", to: "#",  class: "button is-danger",  phx_click: "stop" %>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-container pt-3 pl-6 pr-6 pb-6">
+    <table class="table is-bordered is-striped is-narrow is-fullwidth">
+      <tbody id="<%= @game.id %>">
+        <%= for {x_index, row} <- @game.cells |> Map.to_list() |> Enum.sort() do %>
+
+        <tr id="table-<%= @game.id %>-<%= x_index %>">
+          <%= for {y_index, value} <- row |> Map.to_list() |> Enum.sort() do %>
+          <td id="table-<%= @game.id %>-<%= y_index %>" class="cell-<%= value %>" phx-click="flip_state"
+            phx-value-x_axis="<%= x_index %>" phx-value-y_axis="<%= y_index %>" phx-value-cell_value="<%= value %>">
+            <span class="m-3"></span>
           </td>
-      <% end %>
-    </tr>
-    <% end %>
-  </tbody>
-</table>
-<span><%= link "Play", to: "#", class: "button is-primary", phx_click: "play" %></span>
-<span><%= link "Stop", to: "#",  class: "button is-danger",  phx_click: "stop" %></span>
+          <% end %>
+        </tr>
+
+        <% end %>
+      </tbody>
+
+    </table>
+  </div>
+
+</section>

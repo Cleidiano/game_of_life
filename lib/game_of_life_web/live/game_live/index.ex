@@ -3,9 +3,17 @@ defmodule GameOfLifeWeb.GameLive.Index do
 
   alias GameOfLife.Game
 
+  @initial_board_size 20
+
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, :game, game())}
+    {:ok,
+     socket
+     |> assign(:speed, 500)
+     |> assign(:sleep, 500)
+     |> assign(:board_size, @initial_board_size)
+     |> assign(:game, Game.new(@initial_board_size))
+     |> assign(:playing, false)}
   end
 
   @impl true
@@ -16,7 +24,6 @@ defmodule GameOfLifeWeb.GameLive.Index do
   defp apply_action(socket, :index, _params) do
     socket
     |> assign(:page_title, "Game")
-    |> assign(:game, game())
   end
 
   @impl true
@@ -39,6 +46,29 @@ defmodule GameOfLifeWeb.GameLive.Index do
     {:noreply, assign(socket, :playing, false)}
   end
 
+  def handle_event("change_board", %{"value" => size}, socket) do
+    {size, ""} = Integer.parse(size)
+
+    updated =
+      socket
+      |> assign(board_size: size)
+      |> assign(:game, %{Game.resize(socket.assigns.game, size) | id: :rand.uniform(100)})
+
+    {:noreply, push_patch(updated, to: "/game")}
+  end
+
+  def handle_event("speed", %{"value" => speed}, socket) do
+    speed =
+      speed
+      |> Integer.parse()
+      |> elem(0)
+
+    {:noreply,
+     socket
+     |> assign(:sleep, max(1000 - speed, 200))
+     |> assign(:speed, speed)}
+  end
+
   @impl true
   def handle_info(:play, socket) do
     # Se todas as celulas estiverem mortas, stop.
@@ -47,13 +77,9 @@ defmodule GameOfLifeWeb.GameLive.Index do
     if not socket.assigns.playing or Game.all_dead?(game) do
       {:noreply, socket}
     else
-      Process.send_after(self(), :play, 500)
+      Process.send_after(self(), :play, socket.assigns.sleep)
       {:noreply, assign(socket, :game, Game.play(game))}
     end
-  end
-
-  defp game do
-    Game.new(10)
   end
 
   defp flip_state(game, x, y, "live"), do: Game.dead(game, {x, y})

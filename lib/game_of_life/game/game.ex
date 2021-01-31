@@ -1,5 +1,5 @@
 defmodule GameOfLife.Game do
-  defstruct cells: %{}
+  defstruct id: nil, cells: %{}
 
   @type t :: %__MODULE__{
           cells: map()
@@ -15,8 +15,9 @@ defmodule GameOfLife.Game do
 
       ### Exemple
 
-      iex> GameOfLife.Game.new(2)
+      iex> GameOfLife.Game.new(2, "id")
       %GameOfLife.Game{
+        id: "id",
         cells: %{
           0 => %{0 => :dead, 1 => :dead},
           1 => %{0 => :dead, 1 => :dead}
@@ -24,23 +25,111 @@ defmodule GameOfLife.Game do
       }
   """
   @spec new(pos_integer) :: t()
-  def new(size) when size > 0 do
+  def new(size, id \\ :rand.uniform(100)) when size > 0 do
     %__MODULE__{
-      cells: create_grid_of(size)
+      cells: create_grid_of(size),
+      id: id
     }
   end
 
   defp create_grid_of(size) do
     range = Range.new(0, size - 1)
-
-    row =
-      range
-      |> Enum.map(&{&1, :dead})
-      |> Map.new()
+    row = create_row(range)
 
     range
     |> Enum.map(&{&1, row})
     |> Map.new()
+  end
+
+  defp create_row(range) do
+    range
+    |> Enum.map(&{&1, :dead})
+    |> Map.new()
+  end
+
+  @doc """
+    Resize the board cells to the `size` supllied.
+
+    ### Exemple
+      Increase the board size
+
+      iex> game = GameOfLife.Game.new(2, "id")
+      ...> game = GameOfLife.Game.live(game, {0, 0})
+      ...> GameOfLife.Game.resize(game, 3)
+      %GameOfLife.Game{
+        id: "id",
+        cells: %{
+          0 => %{0 => :live, 1 => :dead, 2 => :dead},
+          1 => %{0 => :dead, 1 => :dead, 2 => :dead},
+          2 => %{0 => :dead, 1 => :dead, 2 => :dead}
+        }
+      }
+
+
+    ### Example
+      Decrease the board size
+
+      iex> game = GameOfLife.Game.new(3, "id")
+      ...> game = GameOfLife.Game.live(game, {2, 2})
+      ...> GameOfLife.Game.resize(game, 2)
+      %GameOfLife.Game{
+        id: "id",
+        cells: %{
+          0 => %{0 => :dead, 1 => :dead},
+          1 => %{0 => :dead, 1 => :dead},
+        }
+      }
+  """
+  @spec resize(t(), integer) :: t()
+  def resize(game, size) when map_size(game.cells) > size do
+    extra_cells = Enum.to_list(size..map_size(game.cells))
+
+    cells =
+      game.cells
+      |> Map.drop(extra_cells)
+      |> Enum.map(fn {index, row} -> {index, Map.drop(row, extra_cells)} end)
+      |> Map.new()
+
+    %{game | cells: cells}
+  end
+
+  def resize(game, size) do
+    all_cells =
+      Map.merge(
+        resize_cells_of(game, size),
+        create_cells_for(game, size)
+      )
+
+    %{game | cells: all_cells}
+  end
+
+  defp create_cells_for(game, size) do
+    Enum.reduce(
+      Range.new(map_size(game.cells), size - 1),
+      %{},
+      fn index, acc ->
+        Map.put(acc, index, create_row(0..(size - 1)))
+      end
+    )
+  end
+
+  defp resize_cells_of(game, size) do
+    resized_board =
+      Enum.map(
+        game.cells,
+        fn {index, row} ->
+          range = Range.new(map_size(row), size - 1)
+
+          updated_row =
+            range
+            |> create_row()
+            |> Map.merge(row)
+
+          {index, updated_row}
+        end
+      )
+
+    Map.new(resized_board)
   end
 
   @doc """
@@ -65,10 +154,11 @@ defmodule GameOfLife.Game do
 
     ### Exemple
       iex> alias GameOfLife.Game
-      ...> g = Game.new(3)
+      ...> g = Game.new(3, "id")
       ...> g = Game.live(g, {0, 0})
       ...> Game.live(g, {1, 2})
       %GameOfLife.Game{
+        id: "id",
         cells: %{
              0 => %{0 => :live, 1 => :dead, 2 => :dead},
              1 => %{0 => :dead, 1 => :dead, 2 => :live},
@@ -86,10 +176,11 @@ defmodule GameOfLife.Game do
 
     ### Exemple
       iex> alias GameOfLife.Game
-      ...> g = Game.new(3)
+      ...> g = Game.new(3, "id")
       ...> g = Game.live(g, {0, 0})
       ...> Game.dead(g, {0, 0})
       %GameOfLife.Game{
+        id: "id",
         cells: %{
               0 => %{0 => :dead, 1 => :dead, 2 => :dead},
               1 => %{0 => :dead, 1 => :dead, 2 => :dead},
@@ -164,8 +255,8 @@ defmodule GameOfLife.Game do
 
   defp get_cell_state(grid, {x, y}) do
     grid.cells
-    |> Map.fetch!(x)
-    |> Map.fetch!(y)
+    |> Map.get(x, %{})
+    |> Map.get(y)
   end
 
   defp apply_state(grid, {x, y} = cell, state) do
