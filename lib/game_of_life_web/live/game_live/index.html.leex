@@ -1,0 +1,20 @@
+<h1>Game</h1>
+<table class="table is-bordered is-fullwidth">
+  <tbody id="board">
+    <%= for {x_index, row} <- @game.cells |> Map.to_list() |> Enum.sort() do %>
+    <tr id="<%= x_index %>">
+      <%= for {y_index, value} <- row |> Map.to_list() |> Enum.sort() do %>
+      <td id="<%= y_index %>"
+          class="cell-<%= value %>"
+          phx-click="flip_state"
+          phx-value-x_axis="<%= x_index %>"
+          phx-value-y_axis="<%= y_index %>"
+          phx-value-cell_value="<%= value %>">
+          </td>
+      <% end %>
+    </tr>
+    <% end %>
+  </tbody>
+</table>
+<span><%= link "Play", to: "#", class: "button is-primary", phx_click: "play" %></span>
+<span><%= link "Stop", to: "#",  class: "button is-danger",  phx_click: "stop" %></span>
