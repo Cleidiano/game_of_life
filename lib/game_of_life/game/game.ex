@@ -7,6 +7,7 @@ defmodule GameOfLife.Game do
 
   @type point :: {x :: pos_integer(), y :: pos_integer()}
   @type cell :: point
+  @type board_size_limit :: integer()
 
   @doc """
     Create a cartesian plane with the specified size
@@ -48,105 +49,61 @@ defmodule GameOfLife.Game do
   end
 
   @doc """
-    Resize the board cells to the `size` supllied.
-
-    ### Exemple
-      Increase the board size
-
-      iex> game = GameOfLife.Game.new(2, "id")
-      ...> game = GameOfLife.Game.live(game, {0, 0})
-      ...> GameOfLife.Game.resize(game, 3)
-      %GameOfLife.Game{
-        id: "id",
-        cells: %{
-          0 => %{0 => :live, 1 => :dead, 2 => :dead},
-          1 => %{0 => :dead, 1 => :dead, 2 => :dead},
-          2 => %{0 => :dead, 1 => :dead, 2 => :dead}
-        }
-      }
-
-
-    ### Example
-      Decrease the board size
-
-      iex> game = GameOfLife.Game.new(3, "id")
-      ...> game = GameOfLife.Game.live(game, {2, 2})
-      ...> GameOfLife.Game.resize(game, 2)
-      %GameOfLife.Game{
-        id: "id",
-        cells: %{
-          0 => %{0 => :dead, 1 => :dead},
-          1 => %{0 => :dead, 1 => :dead},
-        }
-      }
+    Play and generate the next generation of cells
   """
-  @spec resize(t(), integer) :: t()
-  def resize(game, size) when map_size(game.cells) > size do
-    extra_cells = Enum.to_list(size..map_size(game.cells))
+  @spec play(t, board_size_limit) :: t()
+  def play(game, board_size_limit) do
+    played_game =
+      game
+      |> get_all_cells_allowing_extra_boundary(board_size_limit)
+      |> Enum.map(fn cell -> {cell, next_cell_state(game, cell)} end)
+      |> Enum.reduce(game, fn {cell, state}, acc -> apply_state(acc, cell, state) end)
 
-    cells =
-      game.cells
-      |> Map.drop(extra_cells)
-      |> Enum.map(fn {index, row} -> {index, Map.drop(row, extra_cells)} end)
-      |> Map.new()
+    max =
+      played_game.cells
+      |> Enum.max_by(&map_size(elem(&1, 1)))
+      |> elem(1)
+      |> map_size()
 
-    %{game | cells: cells}
+    if Enum.any?(played_game.cells, fn {_index, row} -> map_size(row) < max end) do
+      %{played_game | cells: resize_cells_of(played_game, max)}
+    else
+      played_game
+    end
   end
 
-  def resize(game, size) do
-    all_cells =
-      Map.merge(
-        resize_cells_of(game, size),
-        create_cells_for(game, size)
-      )
+  defp get_all_cells_allowing_extra_boundary(game, board_size_limit) do
+    last_row = fn x -> Map.get(game.cells, x - 1, %{}) end
 
-    %{game | cells: all_cells}
-  end
-
-  defp create_cells_for(game, size) do
-    Enum.reduce(
-      Range.new(map_size(game.cells), size - 1),
-      %{},
-      fn index, acc ->
-        Map.put(acc, index, create_row(0..(size - 1)))
-      end
-    )
+    for x <- 0..map_size(game.cells),
+        y <- 0..map_size(Map.get_lazy(game.cells, x, fn -> last_row.(x) end)),
+        x <= board_size_limit,
+        y <= board_size_limit do
+      {x, y}
+    end
   end
 
   defp resize_cells_of(game, size) do
-    resized_board =
+    resized_cells =
       Enum.map(
         game.cells,
-        fn {index, row} ->
-          range = Range.new(map_size(row), size - 1)
+        fn
+          {index, row} when map_size(row) < size ->
+            range = Range.new(0, size - 1)
 
-          updated_row =
-            range
-            |> create_row()
-            |> Map.merge(row)
+            updated_row =
+              range
+              |> create_row()
+              |> Map.merge(row)
 
-          {index, updated_row}
+            {index, updated_row}
+
+          current ->
+            current
         end
       )
 
-    Map.new(resized_board)
-  end
-
-  @doc """
-    Play and generate the next generation of cells
-  """
-  @spec play(t()) :: t()
-  def play(grid) do
-    limit = map_size(grid.cells) - 1
-
-    exhaustive_cells =
-      for x <- 0..limit, y <- 0..limit do
-        {x, y}
-      end
-
-    exhaustive_cells
-    |> Enum.map(fn cell -> {cell, next_cell_state(grid, cell)} end)
-    |> Enum.reduce(grid, fn {cell, state}, acc -> apply_state(acc, cell, state) end)
+    Map.new(resized_cells)
   end
 
   @doc """
@@ -237,13 +194,11 @@ defmodule GameOfLife.Game do
     end
   end
 
-  defp neighbors(grid, {x, y}) do
-    boundary = 0..(map_size(grid.cells) - 1)
-
+  defp neighbors(_grid, {x, y}) do
     for x1 <- (x - 1)..(x + 1),
         y1 <- (y - 1)..(y + 1),
-        x1 in boundary,
-        y1 in boundary,
+        x1 >= 0,
+        y1 >= 0,
         x1 != x or y1 != y do
       {x1, y1}
     end
@@ -256,14 +211,14 @@ defmodule GameOfLife.Game do
   defp get_cell_state(grid, {x, y}) do
     grid.cells
     |> Map.get(x, %{})
-    |> Map.get(y)
+    |> Map.get(y, :dead)
   end
 
   defp apply_state(grid, {x, y} = cell, state) do
     current_state = get_cell_state(grid, cell)
 
     if current_state != state do
-      put_in(grid.cells[x][y], state)
+      %{grid | cells: put_in(grid.cells, [Access.key(x, %{}), y], state)}
     else
       grid
     end

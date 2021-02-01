@@ -3,9 +3,10 @@ defmodule GameOfLifeWeb.GameLive.Index do
 
   alias GameOfLife.Game
 
-  @initial_board_size 20
+  @initial_board_size 40
 
   @impl true
+  @spec mount(any, any, Phoenix.LiveView.Socket.t()) :: {:ok, Phoenix.LiveView.Socket.t()}
   def mount(_params, _session, socket) do
     {:ok,
      socket
@@ -37,24 +38,9 @@ defmodule GameOfLifeWeb.GameLive.Index do
   end
 
   @impl true
-  def handle_event("play", _, socket) do
-    start_game(socket)
-  end
-
+  def handle_event("play", _, socket), do: start_game(socket)
   def handle_event("pause", _, socket), do: pause(socket)
-
   def handle_event("stop", _, socket), do: stop(socket)
-
-  def handle_event("change_board", %{"value" => size}, socket) do
-    {size, ""} = Integer.parse(size)
-
-    updated =
-      socket
-      |> assign(board_size: size)
-      |> assign(:game, %{Game.resize(socket.assigns.game, size) | id: :rand.uniform(100)})
-
-    {:noreply, push_patch(updated, to: "/game")}
-  end
 
   def handle_event("speed", %{"value" => speed}, socket) do
     speed =
@@ -86,7 +72,7 @@ defmodule GameOfLifeWeb.GameLive.Index do
       pause(socket)
     else
       Process.send_after(self(), :play, socket.assigns.sleep)
-      {:noreply, assign(socket, :game, Game.play(game))}
+      {:noreply, assign(socket, :game, Game.play(game, 100))}
     end
   end
 
@@ -104,7 +90,7 @@ defmodule GameOfLifeWeb.GameLive.Index do
   defp flip_state(game, x, y, "live"), do: Game.dead(game, {x, y})
   defp flip_state(game, x, y, "dead"), do: Game.live(game, {x, y})
 
-  defp conditional_event(state, event) do
+  defp bind_event_when(state, event) do
     if state, do: event
   end
 end

@@ -5,6 +5,8 @@ defmodule GameOfLife.GameTest do
 
   doctest Game
 
+  @board_size_limit 50
+
   test "ensure subsequent stages of the glider pattern works" do
     board =
       Enum.reduce(
@@ -31,7 +33,7 @@ defmodule GameOfLife.GameTest do
       4 => %{0 => :dead, 1 => :dead, 2 => :dead, 3 => :dead, 4 => :dead}
     }
 
-    board = Game.play(board)
+    board = Game.play(board, @board_size_limit)
     assert board.cells == step_1_expected
 
     step_2_expected = %{
@@ -42,7 +44,7 @@ defmodule GameOfLife.GameTest do
       4 => %{0 => :dead, 1 => :dead, 2 => :dead, 3 => :dead, 4 => :dead}
     }
 
-    board = Game.play(board)
+    board = Game.play(board, @board_size_limit)
     assert board.cells == step_2_expected
   end
 
@@ -52,7 +54,7 @@ defmodule GameOfLife.GameTest do
       |> Game.new()
       |> Game.live({2, 2})
 
-    assert Game.play(game).cells == %{
+    assert Game.play(game, @board_size_limit).cells == %{
              0 => %{0 => :dead, 1 => :dead, 2 => :dead},
              1 => %{0 => :dead, 1 => :dead, 2 => :dead},
              2 => %{0 => :dead, 1 => :dead, 2 => :dead}
@@ -68,7 +70,7 @@ defmodule GameOfLife.GameTest do
       |> Game.live({1, 0})
       |> Game.live({1, 2})
 
-    assert Game.play(game).cells == %{
+    assert Game.play(game, @board_size_limit).cells == %{
              0 => %{0 => :live, 1 => :dead, 2 => :live},
              1 => %{0 => :live, 1 => :dead, 2 => :live},
              2 => %{0 => :dead, 1 => :dead, 2 => :dead}
@@ -82,7 +84,7 @@ defmodule GameOfLife.GameTest do
       |> Game.live({1, 0})
       |> Game.live({2, 0})
 
-    assert Game.play(game).cells == %{
+    assert Game.play(game, @board_size_limit).cells == %{
              0 => %{0 => :dead, 1 => :dead, 2 => :dead},
              1 => %{0 => :live, 1 => :live, 2 => :dead},
              2 => %{0 => :dead, 1 => :dead, 2 => :dead}
@@ -96,7 +98,7 @@ defmodule GameOfLife.GameTest do
       |> Game.live({1, 0})
       |> Game.live({1, 1})
 
-    assert Game.play(game).cells == %{
+    assert Game.play(game, @board_size_limit).cells == %{
              0 => %{0 => :live, 1 => :live, 2 => :dead},
              1 => %{0 => :live, 1 => :live, 2 => :dead},
              2 => %{0 => :dead, 1 => :dead, 2 => :dead}
