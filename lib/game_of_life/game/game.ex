@@ -1,4 +1,10 @@
 defmodule GameOfLife.Game do
+  @moduledoc """
+    The core game functionality.
+
+    This module contains functions to create a `new/2` game, `play/2` the game,
+    inspect wheter the cell is `live/2`,`dead/2` or flip it's state using `flip_state/2`.
+  """
   defstruct id: nil, cells: %{}
 
   @type t :: %__MODULE__{
@@ -25,7 +31,7 @@ defmodule GameOfLife.Game do
         }
       }
   """
-  @spec new(pos_integer) :: t()
+  @spec new(pos_integer, any()) :: t()
   def new(size, id \\ :rand.uniform(100)) when size > 0 do
     %__MODULE__{
       cells: create_grid_of(size),
@@ -53,23 +59,11 @@ defmodule GameOfLife.Game do
   """
   @spec play(t, board_size_limit) :: t()
   def play(game, board_size_limit) do
-    played_game =
-      game
-      |> get_all_cells_allowing_extra_boundary(board_size_limit)
-      |> Enum.map(fn cell -> {cell, next_cell_state(game, cell)} end)
-      |> Enum.reduce(game, fn {cell, state}, acc -> apply_state(acc, cell, state) end)
-
-    max =
-      played_game.cells
-      |> Enum.max_by(&map_size(elem(&1, 1)))
-      |> elem(1)
-      |> map_size()
-
-    if Enum.any?(played_game.cells, fn {_index, row} -> map_size(row) < max end) do
-      %{played_game | cells: resize_cells_of(played_game, max)}
-    else
-      played_game
-    end
+    game
+    |> get_all_cells_allowing_extra_boundary(board_size_limit)
+    |> Enum.map(fn cell -> {cell, next_cell_state(game, cell)} end)
+    |> Enum.reduce(game, fn {cell, state}, acc -> apply_state(acc, cell, state) end)
+    |> resize_board_if_need()
   end
 
   defp get_all_cells_allowing_extra_boundary(game, board_size_limit) do
@@ -77,9 +71,23 @@ defmodule GameOfLife.Game do
 
     for x <- 0..map_size(game.cells),
         y <- 0..map_size(Map.get_lazy(game.cells, x, fn -> last_row.(x) end)),
-        x <= board_size_limit,
-        y <= board_size_limit do
+        x < board_size_limit,
+        y < board_size_limit do
       {x, y}
+    end
+  end
+
+  defp resize_board_if_need(game) do
+    max =
+      game.cells
+      |> Enum.max_by(&map_size(elem(&1, 1)))
+      |> elem(1)
+      |> map_size()
+
+    if Enum.any?(game.cells, fn {_index, row} -> map_size(row) < max end) do
+      %{game | cells: resize_cells_of(game, max)}
+    else
+      game
     end
   end
 
@@ -122,10 +130,27 @@ defmodule GameOfLife.Game do
              2 => %{0 => :dead, 1 => :dead, 2 => :dead}
         }
       }
+
+    ### Exemple
+      iex> alias GameOfLife.Game
+      ...> game = Game.new(3, "id")
+      ...> Game.live(game, [{0, 0}, {1, 0}])
+      %GameOfLife.Game{
+        id: "id",
+        cells: %{
+             0 => %{0 => :live, 1 => :dead, 2 => :dead},
+             1 => %{0 => :live, 1 => :dead, 2 => :dead},
+             2 => %{0 => :dead, 1 => :dead, 2 => :dead}
+        }
+      }
   """
-  @spec live(t(), cell()) :: t()
-  def live(grid, cell) do
-    apply_state(grid, cell, :live)
+  @spec live(t(), cell() | list(cell)) :: t()
+  def live(game, cell) when is_tuple(cell) do
+    apply_state(game, cell, :live)
+  end
+
+  def live(game, cells) when is_list(cells) do
+    Enum.reduce(cells, game, &live(&2, &1))
   end
 
   @doc """
@@ -206,6 +231,32 @@ defmodule GameOfLife.Game do
 
   defp live?(grid, cell) do
     get_cell_state(grid, cell) == :live
+  end
+
+  @doc """
+    Flip the current cell state
+
+    ### Exemple
+    iex> alias GameOfLife.Game
+    ...> game = Game.new(3, "id")
+    ...> game = Game.live(game, {0, 1})
+    ...> game = Game.flip_state(game, {0, 0})
+    ...> Game.flip_state(game, {0, 1})
+    %GameOfLife.Game{
+      id: "id",
+      cells: %{
+            0 => %{0 => :live, 1 => :dead, 2 => :dead},
+            1 => %{0 => :dead, 1 => :dead, 2 => :dead},
+            2 => %{0 => :dead, 1 => :dead, 2 => :dead}
+      }
+    }
+  """
+  @spec flip_state(t(), cell) :: t()
+  def flip_state(game, cell) do
+    case get_cell_state(game, cell) do
+      :live -> dead(game, cell)
+      :dead -> live(game, cell)
+    end
   end
 
   defp get_cell_state(grid, {x, y}) do

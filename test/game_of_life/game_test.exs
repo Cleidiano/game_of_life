@@ -104,4 +104,48 @@ defmodule GameOfLife.GameTest do
              2 => %{0 => :dead, 1 => :dead, 2 => :dead}
            }
   end
+
+  test "should increase board size until limit if neeed" do
+    glider_pattern = Game.Patterns.get_patterns()["Glider"]
+
+    game =
+      3
+      |> Game.new(3)
+      |> Game.live(glider_pattern)
+
+    assert map_size(game.cells) == 3
+    assert game.cells |> Map.values() |> Enum.all?(&(map_size(&1) == 3))
+
+    increase_size_progression = [
+      {3, 4},
+      {3, 4},
+      {4, 4},
+      {4, 4},
+      {4, 5},
+      {4, 5},
+      {5, 5},
+      {5, 5},
+      {5, 5},
+      {5, 5},
+      {5, 5}
+    ]
+
+    {game_rounds, _} =
+      Enum.map_reduce(
+        increase_size_progression,
+        game,
+        fn expected_size, acc ->
+          game = Game.play(acc, 5)
+          {{expected_size, game}, game}
+        end
+      )
+
+    for {{x_size, y_size}, game} <- game_rounds do
+      assert map_size(game.cells) == x_size
+
+      for y <- Map.values(game.cells) do
+        assert map_size(y) == y_size
+      end
+    end
+  end
 end

@@ -1,39 +1,69 @@
-<section class="section">
-  <h1 class="title pl-6">Game of Life</h1>
-  <div class="columns pl-6">
-    <div class="column pl-3">
-      <div class="field is-grouped">
-        <div class="control">
-          <%= label :speed_label, :speed, class: "label" %>
-          <span>Speed <%= @speed  %></span>
-          <%= range_input :speed, :speed, min: "200", max: "1000", phx_click: "speed", value: @speed %>
-        </div>
+<nav class="navbar level is-fixed-top is-transparent  has-background-primary">
+  <p class="level-left has-text-centered">
+    <p class="field pl-3">
+      <div class="buttons ml-2 mr-4 mb-0 mt-5 pt-1">
+        <%= link "Play", to: "#", class: "button is-small is-success", phx_click: (if @game_state != :playing, do: "play"), disabled: @game_state == :playing %>
+        <%= link "Pause", to: "#", class: "button is-small is-info", phx_click: (if @game_state == :playing, do: "pause"), disabled: @game_state != :playing %>
+        <%= link "Stop", to: "#",  class: "button is-small is-danger", phx_click: (if @game_state != :stopped, do: "stop"), disabled: @game_state == :stopped %>
       </div>
+    </p>
 
-      <div class="buttons">
-        <%= link "Play", to: "#", class: "button is-primary", phx_click: bind_event_when(!@playing, "play"), disabled: @playing %>
-        <%= link "Pause", to: "#", class: "button is-info", phx_click: bind_event_when(@playing, "pause"), disabled: not @playing %>
-        <%= link "Stop", to: "#",  class: "button is-danger",  phx_click: bind_event_when(@playing, "pause"), disabled: not @playing %>
-      </div>
+    <div class="field ml-5 mr-4">
+      <%= label :pattern_label, :pattern, class: "label has-text-white" %>
+      <p class="control">
+        <div class="select is-small">
+          <%= form_for :pattern_change, "#", [phx_change: :load_pattern] %>
+          <%= select(
+                    :pattern,
+                    :name,
+                    (for {name, _pattern} <- game_patterns(), do: {name, name}),
+                    selected: @loaded_pattern,
+                    class: "select pl-0 pt-0"
+                    )
+                %>
+          </form>
+        </div>
+      </p>
+    </div>
+
+    <div class="field mb-0 ml-4">
+      <%= label :speed_label, :speed, class: "label has-text-white" %>
+      <p class="control mt-3">
+        <span class="is-size-7 has-text-white">
+          <%= range_input :speed, :speed, min: "100", max: "2000", phx_click: "speed", value: @speed %>
+          <%= @speed  %>
+        </span>
+      </p>
+    </div>
+  </p>
+
+  <p class="level-item has-text-centered ">
+    <a class="navbar-item title is-2 has-text-white" href="#">
+      Game of Life
+    </a>
+  </p>
+</nav>
+
+<section class="section pl-1 pr-1 has-background-light">
+  <div class="">
+    <div class="table-container">
+      <table class="table is-bordered is-striped is-narrow is-fullwidth">
+        <tbody id="<%= @game.id %>">
+          <%= for {x_index, row} <- @game.cells |> Map.to_list() |> Enum.sort() do %>
+
+          <tr id="tr-<%= @game.id %>-<%= x_index %>">
+            <%= for {y_index, value} <- row |> Map.to_list() |> Enum.sort() do %>
+            <td id="td-<%= @game.id %>-<%= y_index %>" class="cell-<%= value %> p-3" phx-click="flip_state"
+              phx-value-x="<%= x_index %>" phx-value-y="<%= y_index %>">
+            </td>
+            <% end %>
+          </tr>
+
+          <% end %>
+        </tbody>
+      </table>
     </div>
   </div>
-
-  <div class="table-container pt-3 pl-6 pr-6 pb-6">
-    <table class="table is-bordered is-striped is-narrow is-fullwidth">
-      <tbody id="<%= @game.id %>">
-        <%= for {x_index, row} <- @game.cells |> Map.to_list() |> Enum.sort() do %>
-
-        <tr id="table-<%= @game.id %>-<%= x_index %>">
-          <%= for {y_index, value} <- row |> Map.to_list() |> Enum.sort() do %>
-          <td id="table-<%= @game.id %>-<%= y_index %>" class="cell-<%= value %>" phx-click="flip_state"
-            phx-value-x_axis="<%= x_index %>" phx-value-y_axis="<%= y_index %>" phx-value-cell_value="<%= value %>">
-            <span class="m-3"></span>
-          </td>
-          <% end %>
-        </tr>
-
-        <% end %>
-      </tbody>
-    </table>
-  </div>
 </section>
+
+<footer class="footer is-small has-background-primary  p-1" />

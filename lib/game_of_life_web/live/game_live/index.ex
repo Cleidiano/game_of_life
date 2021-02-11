@@ -4,6 +4,7 @@ defmodule GameOfLifeWeb.GameLive.Index do
   alias GameOfLife.Game
 
   @initial_board_size 40
+  @max_board_size 80
 
   @impl true
   @spec mount(any, any, Phoenix.LiveView.Socket.t()) :: {:ok, Phoenix.LiveView.Socket.t()}
@@ -12,9 +13,9 @@ defmodule GameOfLifeWeb.GameLive.Index do
      socket
      |> assign(:speed, 500)
      |> assign(:sleep, 500)
+     |> assign(:game_state, :paused)
      |> assign(:board_size, @initial_board_size)
-     |> assign(:game, Game.new(@initial_board_size))
-     |> assign(:playing, false)}
+     |> create_game("Gosper Glider Gun")}
   end
 
   @impl true
@@ -23,24 +24,25 @@ defmodule GameOfLifeWeb.GameLive.Index do
   end
 
   defp apply_action(socket, :index, _params) do
-    socket
-    |> assign(:page_title, "Game")
+    assign(socket, :page_title, "Game")
   end
 
   @impl true
-  def handle_event("flip_state", %{"cell_value" => state, "x_axis" => x, "y_axis" => y}, socket) do
+  def handle_event("flip_state", %{"x" => x, "y" => y}, socket) do
     {x_axis, ""} = Integer.parse(x)
     {y_axis, ""} = Integer.parse(y)
 
-    game = flip_state(socket.assigns.game, x_axis, y_axis, state)
-
-    {:noreply, assign(socket, :game, game)}
+    {:noreply, assign(socket, :game, Game.flip_state(socket.assigns.game, {x_axis, y_axis}))}
   end
 
   @impl true
   def handle_event("play", _, socket), do: start_game(socket)
   def handle_event("pause", _, socket), do: pause(socket)
   def handle_event("stop", _, socket), do: stop(socket)
+
+  def handle_event("load_pattern", %{"pattern" => %{"name" => pattern}}, socket) do
+    {:noreply, create_game(socket, pattern)}
+  end
 
   def handle_event("speed", %{"value" => speed}, socket) do
     speed =
@@ -50,47 +52,64 @@ defmodule GameOfLifeWeb.GameLive.Index do
 
     {:noreply,
      socket
-     |> assign(:sleep, max(1000 - speed, 200))
+     |> assign(:sleep, max(2000 - speed, 0))
      |> assign(:speed, speed)}
   end
 
   @impl true
-  def handle_info(:play, socket) do
-    play(socket)
-  end
+  def handle_info(:play, socket), do: play(socket)
 
   defp start_game(socket) do
     socket
-    |> assign(:playing, true)
+    |> assign(:game_state, :playing)
     |> play()
   end
 
   defp play(socket) do
     game = socket.assigns.game
 
-    if not socket.assigns.playing or Game.all_dead?(game) do
-      pause(socket)
-    else
-      Process.send_after(self(), :play, socket.assigns.sleep)
-      {:noreply, assign(socket, :game, Game.play(game, 100))}
+    case socket.assigns.game_state do
+      :paused ->
+        pause(socket)
+
+      :stopped ->
+        stop(socket)
+
+      :playing ->
+        if Game.all_dead?(game) do
+          pause(socket)
+        else
+          Process.send_after(self(), :play, socket.assigns.sleep)
+          {:noreply, assign(socket, :game, Game.play(game, @max_board_size))}
+        end
     end
   end
 
   defp pause(socket) do
-    {:noreply, assign(socket, playing: false)}
+    {:noreply, assign(socket, :game_state, :paused)}
   end
 
   defp stop(socket) do
     {:noreply,
      socket
-     |> assign(playing: false)
-     |> assign(:game, Game.new(socket.assigns.board_size))}
+     |> create_game(socket.assigns.loaded_pattern)
+     |> assign(:game_state, :stopped)}
   end
 
-  defp flip_state(game, x, y, "live"), do: Game.dead(game, {x, y})
-  defp flip_state(game, x, y, "dead"), do: Game.live(game, {x, y})
+  defp create_game(socket, name) do
+    pattern = Map.fetch!(game_patterns(), name)
 
-  defp bind_event_when(state, event) do
-    if state, do: event
+    new_game =
+      @initial_board_size
+      |> Game.new()
+      |> Game.live(pattern)
+
+    socket
+    |> assign(:game, new_game)
+    |> assign(:loaded_pattern, name)
+  end
+
+  defp game_patterns do
+    Game.Patterns.get_patterns()
   end
 end
