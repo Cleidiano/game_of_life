@@ -31,17 +31,28 @@
       <p class="control mt-3">
         <span class="is-size-7 has-text-white">
           <%= range_input :speed, :speed, min: "100", max: "2000", phx_click: "speed", value: @speed %>
-          <%= @speed  %>
         </span>
       </p>
     </div>
+
   </p>
 
-  <p class="level-item has-text-centered ">
+  <p class="level-item has-text-centered">
     <a class="navbar-item title is-2 has-text-white" href="#">
       Game of Life
     </a>
   </p>
+
+
+  <p class="level-right ">
+    <div class="field has-text-white pr-3 title is-6">
+      <p id="generation" class="control p-5">
+        Generation <%= @generation %>
+      </p>
+    </div>
+  </p>
+
+
 </nav>
 
 <section class="section pl-1 pr-1 has-background-light">

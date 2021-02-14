@@ -12,7 +12,8 @@ defmodule GameOfLifeWeb.GameLive.Index do
     {:ok,
      socket
      |> assign(:speed, 500)
-     |> assign(:sleep, 500)
+     |> assign(:sleep, 1500)
+     |> assign(:generation, 0)
      |> assign(:game_state, :paused)
      |> assign(:board_size, @initial_board_size)
      |> create_game("Gosper Glider Gun")}
@@ -80,7 +81,11 @@ defmodule GameOfLifeWeb.GameLive.Index do
           pause(socket)
         else
           Process.send_after(self(), :play, socket.assigns.sleep)
-          {:noreply, assign(socket, :game, Game.play(game, @max_board_size))}
+
+          {:noreply,
+           socket
+           |> assign(:game, Game.play(game, @max_board_size))
+           |> increment_generation()}
         end
     end
   end
@@ -94,6 +99,10 @@ defmodule GameOfLifeWeb.GameLive.Index do
      socket
      |> create_game(socket.assigns.loaded_pattern)
      |> assign(:game_state, :stopped)}
+  end
+
+  defp increment_generation(socket) do
+    assign(socket, :generation, socket.assigns.generation + 1)
   end
 
   defp create_game(socket, name) do
