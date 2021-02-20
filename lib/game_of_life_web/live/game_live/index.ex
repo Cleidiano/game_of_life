@@ -53,7 +53,7 @@ defmodule GameOfLifeWeb.GameLive.Index do
 
     {:noreply,
      socket
-     |> assign(:sleep, max(2000 - speed, 0))
+     |> assign(:sleep, max(2000 - speed, 50))
      |> assign(:speed, speed)}
   end
 
@@ -98,7 +98,8 @@ defmodule GameOfLifeWeb.GameLive.Index do
     {:noreply,
      socket
      |> create_game(socket.assigns.loaded_pattern)
-     |> assign(:game_state, :stopped)}
+     |> assign(:game_state, :stopped)
+     |> assign(:generation, 0)}
   end
 
   defp increment_generation(socket) do
